@@ -7,9 +7,10 @@ import { CountryData } from '../types';
 interface WorldMapProps {
   onSelectCountry: (country: CountryData) => void;
   selectedCountries: CountryData[];
+  isDarkMode?: boolean;
 }
 
-export default function WorldMap({ onSelectCountry, selectedCountries }: WorldMapProps) {
+export default function WorldMap({ onSelectCountry, selectedCountries, isDarkMode = false }: WorldMapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [worldData, setWorldData] = useState<any>(null);
@@ -78,7 +79,7 @@ export default function WorldMap({ onSelectCountry, selectedCountries }: WorldMa
       .attr('class', 'graticule')
       .attr('d', path as any)
       .style('fill', 'none')
-      .style('stroke', '#cbd5e1')
+      .style('stroke', isDarkMode ? '#334155' : '#cbd5e1')
       .style('stroke-width', '0.5px')
       .style('stroke-opacity', 0.4);
 
@@ -87,13 +88,13 @@ export default function WorldMap({ onSelectCountry, selectedCountries }: WorldMa
       .datum({ type: 'Sphere' })
       .attr('class', 'sphere')
       .attr('d', path as any)
-      .style('fill', '#f8fafc')
-      .style('stroke', '#e2e8f0')
+      .style('fill', isDarkMode ? '#0f172a' : '#f8fafc')
+      .style('stroke', isDarkMode ? '#1e293b' : '#e2e8f0')
       .style('stroke-width', '1px');
 
     const tooltip = d3.select('body')
       .append('div')
-      .attr('class', 'absolute hidden glass-panel text-slate-800 px-4 py-3 rounded-2xl shadow-xl border border-white/50 text-sm pointer-events-none z-50')
+      .attr('class', 'absolute hidden glass-panel text-slate-800 dark:text-slate-100 px-4 py-3 rounded-2xl shadow-xl border border-white/50 dark:border-white/10 text-sm pointer-events-none z-50')
       .style('opacity', 0);
 
     // Draw countries
@@ -111,17 +112,24 @@ export default function WorldMap({ onSelectCountry, selectedCountries }: WorldMa
         
         if (data) {
           const isPeak = data.peakSeasons.includes(currentMonth);
-          return isPeak ? '#818cf8' : '#e2e8f0'; // Indigo 400 if peak, slate-200 if off-season
+          if (isPeak) return isDarkMode ? '#6366f1' : '#818cf8';
+          return isDarkMode ? '#1e293b' : '#e2e8f0';
         }
         
-        return '#ffffff'; // No data (White)
+        return isDarkMode ? '#020617' : '#ffffff'; // No data
       })
-      .attr('stroke', (d: any) => selectedIds.includes(d.id) ? '#312e81' : '#cbd5e1')
+      .attr('stroke', (d: any) => {
+        if (selectedIds.includes(d.id)) return isDarkMode ? '#818cf8' : '#312e81';
+        return isDarkMode ? '#334155' : '#cbd5e1';
+      })
       .attr('stroke-width', (d: any) => selectedIds.includes(d.id) ? 1.5 : 0.5)
       .on('mouseover', function (event, d: any) {
         const countryId = d.id;
         const data = COUNTRIES_DATA[countryId];
         
+        // Bring to front to fix border clipping
+        d3.select(this).raise();
+
         if (data) {
           d3.select(this)
             .attr('stroke', '#6366f1')
@@ -133,14 +141,14 @@ export default function WorldMap({ onSelectCountry, selectedCountries }: WorldMa
           
           const tooltipHtml = `
             <div class="font-bold text-base mb-1">${data.name}</div>
-            <div class="flex items-center gap-2 text-xs font-medium ${data.peakSeasons.includes(currentMonth) ? 'text-indigo-600' : 'text-slate-500'}">
+            <div class="flex items-center gap-2 text-xs font-medium ${data.peakSeasons.includes(currentMonth) ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}">
               ${data.peakSeasons.includes(currentMonth) ? '☀️ Peak Season' : '❄️ Off Season'}
             </div>
-            <div class="mt-2 pt-2 border-t border-slate-200/50 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-              <div class="text-slate-500">Work: <span class="text-indigo-600 font-mono font-bold">${Math.round(data.owid.workMinutes/60)}h</span></div>
-              <div class="text-slate-500">Sleep: <span class="text-indigo-600 font-mono font-bold">${Math.round(data.owid.sleepMinutes/60)}h</span></div>
+            <div class="mt-2 pt-2 border-t border-slate-200/50 dark:border-white/10 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+              <div class="text-slate-500 dark:text-slate-400">Work: <span class="text-indigo-600 dark:text-indigo-400 font-mono font-bold">${Math.round(data.owid.workMinutes/60)}h</span></div>
+              <div class="text-slate-500 dark:text-slate-400">Sleep: <span class="text-indigo-600 dark:text-indigo-400 font-mono font-bold">${Math.round(data.owid.sleepMinutes/60)}h</span></div>
             </div>
-            <div class="text-[10px] uppercase tracking-wider text-indigo-500 mt-3 font-bold">Click to compare</div>
+            <div class="text-[10px] uppercase tracking-wider text-indigo-500 dark:text-indigo-400 mt-3 font-bold">Click to compare</div>
           `;
 
           tooltip
@@ -157,7 +165,7 @@ export default function WorldMap({ onSelectCountry, selectedCountries }: WorldMa
       .on('mouseout', function (event, d: any) {
         const isSelected = selectedIds.includes(d.id);
         d3.select(this)
-          .attr('stroke', isSelected ? '#312e81' : '#cbd5e1')
+          .attr('stroke', isSelected ? (isDarkMode ? '#818cf8' : '#312e81') : (isDarkMode ? '#334155' : '#cbd5e1'))
           .attr('stroke-width', isSelected ? 1.5 : 0.5)
           .style('filter', 'none');
 
@@ -187,7 +195,7 @@ export default function WorldMap({ onSelectCountry, selectedCountries }: WorldMa
       .attr('transform', (d: any) => `translate(${path.centroid(d)[0]}, ${path.centroid(d)[1] - 4})`)
       .attr('text-anchor', 'middle')
       .attr('font-size', '8px')
-      .attr('fill', '#475569')
+      .attr('fill', isDarkMode ? '#94a3b8' : '#475569')
       .text((d: any) => COUNTRIES_DATA[d.id].name);
 
     g.selectAll('text.country-icon')
@@ -206,7 +214,7 @@ export default function WorldMap({ onSelectCountry, selectedCountries }: WorldMa
     return () => {
       tooltip.remove();
     };
-  }, [worldData, selectedIds, currentMonth, onSelectCountry, dimensions]);
+  }, [worldData, selectedIds, currentMonth, onSelectCountry, dimensions, isDarkMode]);
 
   return (
     <div ref={wrapperRef} className="w-full h-full glass-panel rounded-[2rem] overflow-hidden relative flex-1">
@@ -214,18 +222,18 @@ export default function WorldMap({ onSelectCountry, selectedCountries }: WorldMa
       
       {/* Map Legend */}
       <div className="absolute bottom-8 left-8 glass-panel px-5 py-4 rounded-2xl shadow-xl">
-        <h3 className="text-slate-800 text-sm font-bold mb-4 font-display tracking-tight">Live Tourism Index</h3>
+        <h3 className="text-slate-800 dark:text-white text-sm font-bold mb-4 font-display tracking-tight">Live Tourism Index</h3>
         <div className="flex items-center gap-3 mb-3">
           <div className="w-4 h-4 rounded-full bg-[#818cf8] border border-[#6366f1] shadow-inner"></div>
-          <span className="text-slate-600 text-xs font-medium">Peak Season (Current Month)</span>
+          <span className="text-slate-600 dark:text-slate-400 text-xs font-medium">Peak Season (Current Month)</span>
         </div>
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-4 h-4 rounded-full bg-[#e2e8f0] border border-[#cbd5e1] shadow-inner"></div>
-          <span className="text-slate-600 text-xs font-medium">Off Season</span>
+          <div className="w-4 h-4 rounded-full bg-[#e2e8f0] dark:bg-slate-700 border border-[#cbd5e1] dark:border-slate-600 shadow-inner"></div>
+          <span className="text-slate-600 dark:text-slate-400 text-xs font-medium">Off Season</span>
         </div>
         <div className="flex items-center gap-3">
           <div className="w-4 h-4 rounded-full bg-[#4f46e5] border border-[#312e81] shadow-inner"></div>
-          <span className="text-slate-600 text-xs font-medium">Selected for Comparison</span>
+          <span className="text-slate-600 dark:text-slate-400 text-xs font-medium">Selected for Comparison</span>
         </div>
       </div>
     </div>
