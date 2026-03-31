@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.github
+.vscode
+.env
+.env.local
+README.md
+Dockerfile
+.dockerignore
+cloudbuild.yaml
+npm-debug.log
